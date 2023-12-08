@@ -6,6 +6,7 @@ export const TaskBox = (
     move_handler, view_details_handler}:
         Task) => {
   return (
+    <div key={id} className='Task'>
     <Box sx={{ border: 1, borderRadius: 1}}>
         <Card>
             <center>
@@ -26,6 +27,7 @@ export const TaskBox = (
             </Stack>
         </Card>
     </Box>
+    </div>
   );
 };
 

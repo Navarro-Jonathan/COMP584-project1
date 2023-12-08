@@ -49,9 +49,9 @@ CREATE TABLE comment (
 
 create_test_tasks = """
 INSERT INTO task(id, name, description, sort_field, created_at, updated_at)
-VALUES ("1", "task1", "a task", 0, CURDATE(), CURDATE()),
-("2", "task2", "some task", 1, CURDATE(), CURDATE()),
-("3", "task3", "yet another task", 2, CURDATE(), CURDATE());
+VALUES ("1", "task1", "a task", 1, CURDATE(), CURDATE()),
+("2", "task2", "some task", 2, CURDATE(), CURDATE()),
+("3", "task3", "yet another task", 3, CURDATE(), CURDATE());
 """
 
 globalCursor.execute(create_task_sql)
@@ -61,6 +61,8 @@ globalCursor.execute(create_test_tasks)
 db.commit()
 globalCursor.close()
 
+MIN_SORT_FIELD_VAL = 1
+
 @app.route('/api/task/create', methods=['POST'])
 def create():
   name = request.json['name']
@@ -69,22 +71,27 @@ def create():
   cursor = db.cursor()
   db.commit()
 
+  print(f"Creating task {name} {description}")
+
   try:
     task_id = None
-    while not task_id:
+    found = 1
+    while found:
         task_id = str(uuid.uuid4())
         sql = "SELECT id FROM task WHERE id = %s"
         values = (task_id,)
         cursor.execute(sql, values)
-        task_id = cursor.fetchone()
+        found = cursor.fetchone()
+        db.commit()
 
     sql = "SELECT MAX(sort_field) FROM task"
-    values = (task_id,)
+    cursor.execute(sql)
     sort_field = cursor.fetchone()
+    print(f"Largest sort_field found: {sort_field}")
     if sort_field:
-      sort_field += 1
+      sort_field = sort_field[0] + 1
     else:
-      sort_field = 0
+      sort_field = MIN_SORT_FIELD_VAL
 
     today = date.today()
     today_sql = f"{today.year}-{today.month}-{today.day}"
@@ -109,24 +116,29 @@ def create():
     }
     return jsonify(response), 500
 
+def get_tasks_query(cursor):
+  sql = "SELECT id, name, description, sort_field, created_at, updated_at, deleted_at FROM task"
+  cursor.execute(sql)
+  tasks = cursor.fetchall()
+  db.commit()
+  tasks = [{
+    "id": task[0],
+    "task_name": task[1],
+    "description": task[2],
+    "sort_field": task[3],
+    "created_at": task[4],
+    "updated_at": task[5]
+  } for task in tasks]
+  return tasks
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
   cursor = db.cursor()
   db.commit()
 
   try:
-    sql = "SELECT id, name, description, sort_field, created_at, updated_at, deleted_at FROM task"
-    cursor.execute(sql)
-    tasks = cursor.fetchall()
+    tasks = get_tasks_query(cursor)
     print(f"Tasks: {tasks}")
-    tasks = [{
-      "id": task[0],
-      "task_name": task[1],
-      "description": task[2],
-      "sort_field": task[3],
-      "created_at": task[4],
-      "updated_at": task[5]
-    } for task in tasks]
     return jsonify(tasks), 200
   except Exception as e:
     # Unique modifier prevents duplicate username/email
@@ -140,22 +152,58 @@ def get_tasks():
 
 @app.route('/api/tasks/updateorder', methods=['POST'])
 def update_order():
-  new_sort_fields = request.json['new_sort_fields']
+  current_position = request.json['old_index'] + 1
+  target_position = request.json['new_index'] + 1
 
   cursor = db.cursor()
   db.commit()
 
-  try:
-    tasks = None
-    for new_sort_field in new_sort_fields:
-      task_id = new_sort_field[0]
-      sort_field = new_sort_field[1]
-      sql = "UPDATE task SET sort_field=%s WHERE id=%s"
-      values = (task_id, sort_field)
-      cursor.execute(sql, values)
-      tasks = cursor.fetchall()
-      print(f"Tasks: {tasks}")
+  if target_position == current_position:
+    print(f"target and current were both {current_position}")
+    tasks = get_tasks_query(cursor)
+    return jsonify(tasks), 200
 
+  try:
+    # find direction
+    going_down = target_position > current_position
+
+    # get id of the moved task
+    sql = "SELECT id FROM task WHERE sort_field = %s"
+    values = (current_position, )
+    cursor.execute(sql, values)
+    task_id = cursor.fetchone()
+    print(f'task at sort_field {current_position} has id {task_id}')
+    db.commit()
+    if not task_id:
+      return jsonify({"status": "failed"}), 500
+    task_id = task_id[0]
+
+    # set sort_field to 0 for the task
+    sql = "UPDATE task SET sort_field = 0 WHERE sort_field = %s AND id = %s"
+    values = (current_position, task_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    # move everything else accordingly
+    if going_down:
+      sql = "UPDATE task SET sort_field = (sort_field - 1) WHERE sort_field > %s AND sort_field <= %s"
+      values = (current_position, target_position)
+      cursor.execute(sql, values)
+      db.commit()
+    else:
+      sql = "UPDATE task SET sort_field = (sort_field + 1) WHERE sort_field >= %s AND sort_field < %s"
+      values = (target_position, current_position)
+      cursor.execute(sql, values)
+      db.commit()
+
+    # set the moved task's sort_field
+    sql = "UPDATE task SET sort_field = %s WHERE sort_field = 0 AND id = %s"
+    values = (target_position, task_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    tasks = get_tasks_query(cursor)
+    print(f"Updated orders: {tasks}")
     return jsonify(tasks), 200
   except Exception as e:
     # Unique modifier prevents duplicate username/email

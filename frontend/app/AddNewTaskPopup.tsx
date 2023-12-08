@@ -23,6 +23,8 @@ export function AddNewTaskButton() {
     };
 
     const createClicked = () => {
+        console.log("Create clicked")
+        handleClose();
         fetch("http://localhost:5000/api/task/create", {
             method: "POST",
             headers: {
@@ -32,12 +34,6 @@ export function AddNewTaskButton() {
                 name: name,
                 description: description
             })
-        })
-        .then(res => {
-            if(res.ok){
-                // TODO could get tasks from db here
-                setOpen(false)
-            }
         })
         .then(json => console.log(json))
         .catch(e => console.log(e))

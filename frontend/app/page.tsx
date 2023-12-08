@@ -11,7 +11,6 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -35,29 +34,12 @@ export default function Home(){
     fetch('http://localhost:5000/api/tasks')
       .then((res) => res.json())
       .then((data) => {
-        const parsed_data: Task[] = data.map((task: any) => {
-          const parsed_task = {
-            id: task.id,
-            task_name: task.task_name,
-            description: task.description,
-            sort_field: task.sort_field,
-            created_at: task.created_at,
-            updated_at: task.updated_at,
-            move_handler: () => {return},
-            view_details_handler: () => {return}
-          }
-          return parsed_task
+          const parsed_data = parse_task_data(data)
+          setTasks(parsed_data);
+          console.log(parsed_data);
         })
-        setTasks(parsed_data)
-      })
   }, [])
-
-  let task_fields: number[] = []
-  if(tasks.length > 0){
-    tasks.forEach((task: Task) => task_fields.push(task.sort_field))
-  }
-  console.log(tasks)
-  console.log(task_fields)
+  tasks.sort((a: Task, b: Task) => a.sort_field - b.sort_field)
   return (
     <main>
       <Container>
@@ -80,7 +62,7 @@ export default function Home(){
           onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={task_fields}
+              items={tasks}
               strategy={verticalListSortingStrategy}
             >
               <Grid
@@ -113,22 +95,43 @@ export default function Home(){
     const oldIndex = sort_fields.indexOf(active.id);
     const newIndex = sort_fields.indexOf(over.id);
 
-    const updated_tasks = arrayMove(tasks, oldIndex, newIndex);
-    setTasks(updated_tasks)
-    try{
-      fetch("http://localhost/api/tasks/updateorder", {
-          method: "POST",
-          body: JSON.stringify({
-            new_sort_fields: updated_tasks.map((task: Task) => [task.id, task.sort_field])
-          }),
-          headers: {
-            "Content-type": "application/json; charset=UTF-8"
-          }
+    fetch("http://localhost:5000/api/tasks/updateorder", {
+      method: "POST",
+      body: JSON.stringify({
+        old_index: oldIndex,
+        new_index: newIndex
+      }),
+      headers: {
+          "Content-type": "application/json; charset=UTF-8"
         }
-      ).then(json => console.log(json))
+      }
+      )
+      .then(res => {
+        if (res.ok){
+          return res.json()
+        }
+      })
+      .then(json => setTasks(parse_task_data(json)))
       .catch(e => console.log(e))
-    } catch (err) {
-        console.log(err);
+  }
+  function parse_task_data(data: any){
+    if (data == null){
+      return []
     }
+    const parsed_data: Task[] = data.map((task: Task) => {
+      const parsed_task: Task = {
+        id: task.id,
+        task_name: task.task_name,
+        description: task.description,
+        sort_field: task.sort_field,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        deleted_at: task.deleted_at,
+        move_handler: () => {return},
+        view_details_handler: () => {return}
+      };
+      return parsed_task;
+    });
+    return parsed_data;
   }
 }
