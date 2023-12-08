@@ -19,6 +19,7 @@ export function SortableItem(props: {id: number, task: Task}) {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       {<TaskBox
+      id={task.id}
       task_name={task.task_name}
       description={task.description}
       sort_field={task.sort_field}

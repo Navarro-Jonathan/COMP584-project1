@@ -1,11 +1,7 @@
 "use client";
 
-import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import Stack from '@mui/material/Stack';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import React, {useState} from 'react';
+import {Box, Card, Stack, Container, Typography} from '@mui/material';
+import React, {useState, useEffect} from 'react';
 import {
   DndContext,
   closestCenter,
@@ -21,27 +17,47 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import {SortableItem} from './components/SortableItem';
+import {AddNewTaskButton} from './AddNewTaskPopup'
+import {Task} from './components/Task'
 import { Grid } from '@mui/material';
 
-export default function Home() {
-  const [items, setItems] = useState([1, 2, 3]);
+export default function Home(){
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  const test_task = {
-      task_name: 'test',
-      description: 'description test',
-      sort_field: 0,
-      created_at: new Date("02:04:2023"),
-      updated_at: new Date("02:04:2023"),
-      deleted_at: new Date("02:04:2023"),
-      move_handler: () => console.log("moved"),
-      view_details_handler: () => console.log("view details")
-  }
 
+  const [tasks, setTasks] = useState([])
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/tasks')
+      .then((res) => res.json())
+      .then((data) => {
+        const parsed_data: Task[] = data.map((task: any) => {
+          const parsed_task = {
+            id: task.id,
+            task_name: task.task_name,
+            description: task.description,
+            sort_field: task.sort_field,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            move_handler: () => {return},
+            view_details_handler: () => {return}
+          }
+          return parsed_task
+        })
+        setTasks(parsed_data)
+      })
+  }, [])
+
+  let task_fields: number[] = []
+  if(tasks.length > 0){
+    tasks.forEach((task: Task) => task_fields.push(task.sort_field))
+  }
+  console.log(tasks)
+  console.log(task_fields)
   return (
     <main>
       <Container>
@@ -52,6 +68,11 @@ export default function Home() {
             </center>
           </Card>
         </Box>
+        <Box paddingTop={3}>
+          <center>
+            {AddNewTaskButton()}
+          </center>
+        </Box>
         <Box justifyContent={'center'}>
           <DndContext
           sensors={sensors}
@@ -59,7 +80,7 @@ export default function Home() {
           onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={items}
+              items={task_fields}
               strategy={verticalListSortingStrategy}
             >
               <Grid
@@ -70,7 +91,8 @@ export default function Home() {
                 paddingTop={3}
               >
                 <Stack spacing={3}>
-                  {items.map(id => <SortableItem key={id} id={id} task={test_task}/>)}
+                  {tasks.length == 0 ? [] :
+                  tasks.map((task: Task) => <SortableItem key={task.sort_field} id={task.sort_field} task={task}/>)}
                 </Stack>
               </Grid>
             </SortableContext>
@@ -82,16 +104,31 @@ export default function Home() {
 
   function handleDragEnd(event: any) {
     const {active, over} = event;
+    const sort_fields = tasks.map((task: Task) => task.sort_field)
 
     if (active.id === over.id) {
       return
     }
 
-    setItems((items) => {
-      const oldIndex = items.indexOf(active.id);
-      const newIndex = items.indexOf(over.id);
+    const oldIndex = sort_fields.indexOf(active.id);
+    const newIndex = sort_fields.indexOf(over.id);
 
-      return arrayMove(items, oldIndex, newIndex);
-    });
+    const updated_tasks = arrayMove(tasks, oldIndex, newIndex);
+    setTasks(updated_tasks)
+    try{
+      fetch("http://localhost/api/tasks/updateorder", {
+          method: "POST",
+          body: JSON.stringify({
+            new_sort_fields: updated_tasks.map((task: Task) => [task.id, task.sort_field])
+          }),
+          headers: {
+            "Content-type": "application/json; charset=UTF-8"
+          }
+        }
+      ).then(json => console.log(json))
+      .catch(e => console.log(e))
+    } catch (err) {
+        console.log(err);
+    }
   }
 }
