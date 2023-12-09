@@ -53,7 +53,7 @@ export default function Home(){
         </Box>
         <Box paddingTop={3}>
           <center>
-            {AddNewTaskButton()}
+            {AddNewTaskButton(()=>refresh_tasks())}
           </center>
         </Box>
         <Box paddingTop={3}>
@@ -148,6 +148,7 @@ export default function Home(){
     return deleted_removed;
   }
   function refresh_tasks(){
+    console.log("refreshing")
     fetch('http://localhost:5000/api/tasks')
     .then((res) => res.json())
     .then((data) => {

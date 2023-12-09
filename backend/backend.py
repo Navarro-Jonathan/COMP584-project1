@@ -67,11 +67,11 @@ MIN_SORT_FIELD_VAL = 1
 def create():
   name = request.json['name']
   description = request.json['description']
+  print(f"Creating task {name} {description}")
 
   cursor = db.cursor()
   db.commit()
 
-  print(f"Creating task {name} {description}")
 
   try:
     task_id = None
@@ -138,6 +138,7 @@ def get_tasks():
 
   try:
     tasks = get_tasks_query(cursor)
+    cursor.close()
     print(f"Tasks: {tasks}")
     return jsonify(tasks), 200
   except Exception as e:

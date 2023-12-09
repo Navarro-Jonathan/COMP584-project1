@@ -2,7 +2,7 @@ import React from 'react';
 import {useState, ChangeEvent} from 'react';
 import {Card, Button, TextField, Modal, Container, Stack} from '@mui/material';
 
-export function AddNewTaskButton() {
+export function AddNewTaskButton(onExit: Function) {
     const [open, setOpen] = React.useState(false);
     const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
@@ -24,19 +24,20 @@ export function AddNewTaskButton() {
 
     const createClicked = () => {
         console.log("Create clicked")
-        handleClose();
         fetch("http://localhost:5000/api/task/create", {
             method: "POST",
             headers: {
-                "Content-type": "application/json"
+                "Content-type": "application/json",
+                "Access-Control-Allow-Origin": "*"
             },
             body: JSON.stringify({
                 name: name,
                 description: description
             })
         })
-        .then(json => console.log(json))
+        .then(()=>onExit())
         .catch(e => console.log(e))
+        handleClose();
     };
 
     return (
