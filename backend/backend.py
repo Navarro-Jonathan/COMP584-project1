@@ -257,7 +257,7 @@ def get_comments():
   try:
     sql = "SELECT id, task_id, task_comment, created_at, updated_at, deleted_at FROM comment WHERE task_id = %s"
     values = (task_id,)
-    cursor.execute(sql)
+    cursor.execute(sql, values)
     comments = cursor.fetchall()
     db.commit()
     comments = [{

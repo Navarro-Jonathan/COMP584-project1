@@ -3,7 +3,7 @@ import {useState, ChangeEvent, useEffect} from 'react';
 import {Card, Button, TextField, Modal, Container, Stack} from '@mui/material';
 import Task from './components/Task';
 
-export function TaskDetailsPopup(task: Task) {
+export function TaskDetailsPopup(task: Task, isOpen: boolean) {
     const [open, setOpen] = React.useState(false);
     const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
@@ -11,27 +11,6 @@ export function TaskDetailsPopup(task: Task) {
     const [description, setDescription] = useState('');
     const [commentText, setCommentText] = useState('');
     const [comments, setComments] = useState([''])
-    useEffect(() => {
-        fetch("http://localhost:5000/api/tasks/updateorder", {
-            method: "POST",
-            body: JSON.stringify({
-                task_id: task.id
-            }),
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-                }
-        })
-        .then((res) => res.json())
-        .then((data) => {
-            setComments(data);
-        })
-      })
-
-    console.log(task)
-    if(task == null){
-        setOpen(false)
-        return
-    }
 
     const _handleNameTextChanged = (event: ChangeEvent<HTMLInputElement>): void => {
         if(event == null){
@@ -51,6 +30,8 @@ export function TaskDetailsPopup(task: Task) {
         }
         setCommentText(event.target.value);
     };
+    console.log(task)
+
     const deleteClicked = () => {
         console.log("Delete clicked")
         handleClose();
@@ -82,6 +63,8 @@ export function TaskDetailsPopup(task: Task) {
         .then(task.update_handler())
         .catch(e => console.log(e))
     };
+    console.log(task)
+    setOpen(isOpen)
 
     const newCommentClicked = () => {
         console.log("Update clicked")
@@ -96,9 +79,10 @@ export function TaskDetailsPopup(task: Task) {
             })
         })
         .then(task.update_handler())
+        .then(() =>refresh_comments())
         .catch(e => console.log(e))
     };
-
+    console.log(task)
     return (
         <Container>
             <Modal
@@ -106,6 +90,7 @@ export function TaskDetailsPopup(task: Task) {
             onClose={handleClose}
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
+            sx={{ zIndex: 'modal' }}
             style={{display:'flex',alignItems:'center',justifyContent:'center'}}
             >
                 <Card sx={{width: 500, padding: 5}}>
@@ -128,4 +113,19 @@ export function TaskDetailsPopup(task: Task) {
             </Modal>
         </Container>
     );
+    function refresh_comments(){
+        fetch("http://localhost:5000/api/comments", {
+            method: "POST",
+            body: JSON.stringify({
+                task_id: task.id
+            }),
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+                }
+        })
+        .then((res) => res.json())
+        .then((data) => {
+            setComments(data);
+        })
+    }
   }

@@ -6,6 +6,7 @@ export const TaskBox = (
         console.log("clicked view details");
         task.view_details_handler(task);
     }
+
   return (
       <Box sx={{ border: 1, borderRadius: 1}}>
         <Card>
@@ -20,12 +21,14 @@ export const TaskBox = (
                 paddingLeft={5}
                 paddingRight={5}
                 paddingTop={3}>
-                <button onClick={onClick}>View Details</button>
+                <div data-no-dnd>
+                    <Button onClick={() =>task.view_details_handler(task)}>View Details</Button>
+                </div>
             </Stack>
         </Card>
         <div key={task.id} className='Task' />
     </Box>
-  );
+  )
 };
 
 export type Task = {

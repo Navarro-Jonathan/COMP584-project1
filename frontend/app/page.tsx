@@ -1,12 +1,12 @@
 "use client";
 
 import {Box, Card, Button, Stack, Container, Typography} from '@mui/material';
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, MouseEvent, TouchEvent} from 'react';
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
+  KeyboardSensor as OriginalKeyboardSesnsor,
+  PointerSensor as OriginalPointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import {SortableItem} from './components/SortableItem';
-import {AddNewTaskButton} from './AddNewTaskPopup'
+import { AddNewTaskButton } from './AddNewTaskPopup';
 import { TaskDetailsPopup } from './TaskDetailsPopup';
 import {Task} from './components/Task'
 import { Grid } from '@mui/material';
@@ -30,7 +30,8 @@ export default function Home(){
   );
 
   const [tasks, setTasks] = useState([])
-  let selectedTask = null
+  const [selectedTask, setSelectedTask] = useState(null)
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false)
   useEffect(() => {
     fetch('http://localhost:5000/api/tasks')
       .then((res) => res.json())
@@ -40,6 +41,10 @@ export default function Home(){
           console.log(parsed_data);
         })
   }, [])
+  const openDetailsPopup = (task: Task) =>{
+    setSelectedTask(task);
+    setViewDetailsOpen(true);
+  }
   tasks.sort((a: Task, b: Task) => Number(a.sort_field) - Number(b.sort_field))
   return (
     <main>
@@ -54,11 +59,6 @@ export default function Home(){
         <Box paddingTop={3}>
           <center>
             {AddNewTaskButton(()=>refresh_tasks())}
-          </center>
-        </Box>
-        <Box paddingTop={3}>
-          <center>
-            {selectedTask ? TaskDetailsPopup(selectedTask) : <div />}
           </center>
         </Box>
         <Box justifyContent={'center'}>
@@ -133,9 +133,7 @@ export default function Home(){
         created_at: task.created_at,
         updated_at: task.updated_at,
         deleted_at: task.deleted_at,
-        view_details_handler: (task: Task)=>{
-          console.log("view details handled");
-          selectedTask = task;},
+        view_details_handler: (task: Task) => {openDetailsPopup(task)},
         update_handler: () => {refresh_tasks()},
         delete_handler: () => {refresh_tasks()}
       };
@@ -157,4 +155,23 @@ export default function Home(){
         console.log(parsed_data);
       })
   }
+}
+const handler = ({ nativeEvent: event }: MouseEvent | TouchEvent) => {
+  let current = event.target as HTMLElement;
+
+  while (current) {
+      if (current.dataset && current.dataset.noDnd) {
+          return false;
+      }
+      current = current.parentElement as HTMLElement;
+  }
+
+  return true;
+};
+
+export class PointerSensor extends OriginalPointerSensor {
+  static activators = [{ eventName: 'onPointerDown', handler }] as typeof OriginalPointerSensor['activators'];
+}
+export class KeyboardSensor extends OriginalKeyboardSesnsor {
+  static activators = [{ eventName: 'onTouchStart', handler }] as typeof OriginalKeyboardSesnsor['activators'];
 }
