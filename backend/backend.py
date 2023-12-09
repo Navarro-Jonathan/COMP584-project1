@@ -247,13 +247,16 @@ def delete_task():
     }
     return jsonify(response), 500
 
-@app.route('/api/comments', methods=['GET'])
+@app.route('/api/comments', methods=['POST'])
 def get_comments():
+  task_id = request.json['task_id']
+
   cursor = db.cursor()
   db.commit()
 
   try:
-    sql = "SELECT id, task_id, task_comment, created_at, updated_at, deleted_at FROM comment"
+    sql = "SELECT id, task_id, task_comment, created_at, updated_at, deleted_at FROM comment WHERE task_id = %s"
+    values = (task_id,)
     cursor.execute(sql)
     comments = cursor.fetchall()
     db.commit()
