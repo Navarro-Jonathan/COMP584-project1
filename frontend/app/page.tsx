@@ -1,6 +1,6 @@
 "use client";
 
-import {Box, Card, Stack, Container, Typography} from '@mui/material';
+import {Box, Card, Button, Stack, Container, Typography} from '@mui/material';
 import React, {useState, useEffect} from 'react';
 import {
   DndContext,
@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import {SortableItem} from './components/SortableItem';
 import {AddNewTaskButton} from './AddNewTaskPopup'
+import { TaskDetailsPopup } from './TaskDetailsPopup';
 import {Task} from './components/Task'
 import { Grid } from '@mui/material';
 
@@ -29,7 +30,7 @@ export default function Home(){
   );
 
   const [tasks, setTasks] = useState([])
-
+  let selectedTask = null
   useEffect(() => {
     fetch('http://localhost:5000/api/tasks')
       .then((res) => res.json())
@@ -39,7 +40,7 @@ export default function Home(){
           console.log(parsed_data);
         })
   }, [])
-  tasks.sort((a: Task, b: Task) => a.sort_field - b.sort_field)
+  tasks.sort((a: Task, b: Task) => Number(a.sort_field) - Number(b.sort_field))
   return (
     <main>
       <Container>
@@ -53,6 +54,11 @@ export default function Home(){
         <Box paddingTop={3}>
           <center>
             {AddNewTaskButton()}
+          </center>
+        </Box>
+        <Box paddingTop={3}>
+          <center>
+            {selectedTask ? TaskDetailsPopup(selectedTask) : <div />}
           </center>
         </Box>
         <Box justifyContent={'center'}>
@@ -123,15 +129,31 @@ export default function Home(){
         id: task.id,
         task_name: task.task_name,
         description: task.description,
-        sort_field: task.sort_field,
+        sort_field: String(task.sort_field),
         created_at: task.created_at,
         updated_at: task.updated_at,
         deleted_at: task.deleted_at,
-        move_handler: () => {return},
-        view_details_handler: () => {return}
+        view_details_handler: (task: Task)=>{
+          console.log("view details handled");
+          selectedTask = task;},
+        update_handler: () => {refresh_tasks()},
+        delete_handler: () => {refresh_tasks()}
       };
       return parsed_task;
     });
-    return parsed_data;
+    const deleted_removed: Task[] = []
+    parsed_data.forEach((task: Task) => {
+      if(task.deleted_at == null) deleted_removed.push(task)
+    })
+    return deleted_removed;
+  }
+  function refresh_tasks(){
+    fetch('http://localhost:5000/api/tasks')
+    .then((res) => res.json())
+    .then((data) => {
+        const parsed_data = parse_task_data(data)
+        setTasks(parsed_data);
+        console.log(parsed_data);
+      })
   }
 }

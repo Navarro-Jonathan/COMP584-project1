@@ -215,5 +215,130 @@ def update_order():
     }
     return jsonify(response), 500
 
+@app.route('/api/task/delete', methods=['POST'])
+def delete_task():
+  task_id = request.json['comment_ids']
+
+  cursor = db.cursor()
+  db.commit()
+
+  try:
+    today = date.today()
+    today_sql = f"{today.year}-{today.month}-{today.day}"
+    sql = "UPDATE task SET deleted_at = %s WHERE id = %s"
+    values = (today_sql,task_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    sql = "UPDATE comment SET deleted_at = %s WHERE task_id = %s"
+    values = (today_sql,task_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    return jsonify({"status": "success"}), 200
+  except Exception as e:
+    # Unique modifier prevents duplicate username/email
+    print(e)
+    print(traceback.format_exc())
+    response = {
+      "status": "failed",
+      "message": "An exception occured"
+    }
+    return jsonify(response), 500
+
+@app.route('/api/comments', methods=['GET'])
+def get_comments():
+  cursor = db.cursor()
+  db.commit()
+
+  try:
+    sql = "SELECT id, task_id, task_comment, created_at, updated_at, deleted_at FROM comment"
+    cursor.execute(sql)
+    comments = cursor.fetchall()
+    db.commit()
+    comments = [{
+      "id": comment[0],
+      "task_id": comment[1],
+      "task_comment": comment[2],
+      "created_at": comment[3],
+      "updated_at": comment[4],
+      "deleted_at": comment[5]
+    } for comment in comments]
+    return jsonify(comments), 200
+  except Exception as e:
+    # Unique modifier prevents duplicate username/email
+    print(e)
+    print(traceback.format_exc())
+    response = {
+      "status": "failed",
+      "message": "An exception occured"
+    }
+    return jsonify(response), 500
+
+@app.route('/api/comment/create', methods=['POST'])
+def create_comment():
+  task_id = request.json['task_id']
+  comment = request.json['comment']
+
+  cursor = db.cursor()
+  db.commit()
+
+  try:
+    # generate a comment id
+    comment_id = None
+    found = 1
+    while found:
+        comment_id = str(uuid.uuid4())
+        sql = "SELECT id FROM task WHERE id = %s"
+        values = (comment_id,)
+        cursor.execute(sql, values)
+        found = cursor.fetchone()
+        db.commit()
+
+    today = date.today()
+    today_sql = f"{today.year}-{today.month}-{today.day}"
+
+    sql = "INSERT INTO task (id, task_id, comment, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)"
+    values = (comment_id, task_id, comment, today_sql, today_sql)
+    cursor.execute(sql, values)
+    db.commit()
+
+    return jsonify({"status": "success"}), 200
+  except Exception as e:
+    # Unique modifier prevents duplicate username/email
+    print(e)
+    print(traceback.format_exc())
+    response = {
+      "status": "failed",
+      "message": "An exception occured"
+    }
+    return jsonify(response), 500
+
+@app.route('/api/comment/delete', methods=['POST'])
+def delete_comment():
+  comment_id = request.json['comment_id']
+
+  cursor = db.cursor()
+  db.commit()
+
+  try:
+    today = date.today()
+    today_sql = f"{today.year}-{today.month}-{today.day}"
+    sql = "UPDATE comment SET deleted_at = %s WHERE comment_id = %s"
+    values = (today_sql,comment_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    return jsonify({"status": "success"}), 200
+  except Exception as e:
+    # Unique modifier prevents duplicate username/email
+    print(e)
+    print(traceback.format_exc())
+    response = {
+      "status": "failed",
+      "message": "An exception occured"
+    }
+    return jsonify(response), 500
+
 if __name__ == '__main__':
   app.run(port=5000, debug=True)
