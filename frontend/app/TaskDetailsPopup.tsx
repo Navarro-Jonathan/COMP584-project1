@@ -1,12 +1,12 @@
 import React from 'react';
 import {useState, ChangeEvent, useEffect} from 'react';
-import {Card, Button, TextField, Modal, Container, Stack} from '@mui/material';
+import {Card, Button, TextField, Box, Modal, Backdrop, Container, Stack, Typography} from '@mui/material';
 import Task from './components/Task';
 
-export function TaskDetailsPopup(task: Task, isOpen: boolean) {
+export function TaskDetailsButton(task: Task) {
     const [open, setOpen] = React.useState(false);
     const handleOpen = () => setOpen(true);
-    const handleClose = () => setOpen(false);
+    const handleClose = () => {setOpen(false);task.update_handler()};
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [commentText, setCommentText] = useState('');
@@ -30,10 +30,9 @@ export function TaskDetailsPopup(task: Task, isOpen: boolean) {
         }
         setCommentText(event.target.value);
     };
-    console.log(task)
 
     const deleteClicked = () => {
-        console.log("Delete clicked")
+        console.log("Delete clicked");
         handleClose();
         fetch("http://localhost:5000/api/task/delete", {
             method: "POST",
@@ -48,7 +47,7 @@ export function TaskDetailsPopup(task: Task, isOpen: boolean) {
         .catch(e => console.log(e))
     };
     const updateClicked = () => {
-        console.log("Update clicked")
+        console.log("Update clicked");
         fetch("http://localhost:5000/api/task/update", {
             method: "POST",
             headers: {
@@ -63,15 +62,14 @@ export function TaskDetailsPopup(task: Task, isOpen: boolean) {
         .then(task.update_handler())
         .catch(e => console.log(e))
     };
-    console.log(task)
-    setOpen(isOpen)
 
     const newCommentClicked = () => {
         console.log("Update clicked")
         fetch("http://localhost:5000/api/comment/create", {
             method: "POST",
             headers: {
-                "Content-type": "application/json"
+                "Content-type": "application/json",
+                "Access-Control-Allow-Origin": "*"
             },
             body: JSON.stringify({
                 task_id: task.id,
@@ -82,37 +80,44 @@ export function TaskDetailsPopup(task: Task, isOpen: boolean) {
         .then(() =>refresh_comments())
         .catch(e => console.log(e))
     };
-    console.log(task)
     return (
         <Container>
+            <div data-no-dnd>
+                <Button onClick={() =>{handleOpen();refresh_comments();}}>View Details</Button>
             <Modal
             open={open}
             onClose={handleClose}
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
-            sx={{ zIndex: 'modal' }}
+            sx={{zIndex: (theme) => theme.zIndex.drawer + 1 }}
             style={{display:'flex',alignItems:'center',justifyContent:'center'}}
             >
                 <Card sx={{width: 500, padding: 5}}>
                     <Stack spacing={3}>
                         <TextField id="name-input" label="Name" variant="standard"
-                        placeholder='Name'
+                        defaultValue={task.task_name}
                         onChange={_handleNameTextChanged}/>
                         <TextField id="description-input" label="Description" variant="standard"
-                        placeholder='Description'
+                        defaultValue={task.description}
                         onChange={_handleDescriptionTextChanged}/>
-                        {comments}
                         <Button onClick={updateClicked}>Update</Button>
                         <Button onClick={deleteClicked}>Delete</Button>
+                        {comments.length > 0 ? getCommentArray(comments) : <p></p>}
                         <TextField id="comment-input" label="Comment" variant="standard"
                         placeholder='Comment'
                         onChange={_handleCommentTextChanged}/>
                         <Button onClick={newCommentClicked}>Add Comment</Button>
+                        <Button onClick={handleClose}>Close</Button>
                     </Stack>
                 </Card>
             </Modal>
+            </div>
         </Container>
     );
+    function getCommentArray(comments: Comment[]){
+        const arr: Comment[] = Array.from(comments.sort((a: Comment, b: Comment) => a.created_at - b.created_at))
+        return arr.map((comment, i) => <p key={i}>{comment.task_comment}</p>)
+    }
     function refresh_comments(){
         fetch("http://localhost:5000/api/comments", {
             method: "POST",
@@ -129,3 +134,11 @@ export function TaskDetailsPopup(task: Task, isOpen: boolean) {
         })
     }
   }
+export type Comment = {
+    id: string,
+    task_id: string,
+    task_comment: string,
+    created_at: string,
+    updated_at: string,
+    deleted_at: string
+};

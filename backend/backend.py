@@ -216,6 +216,37 @@ def update_order():
     }
     return jsonify(response), 500
 
+@app.route('/api/task/update', methods=['POST'])
+def update_task():
+  task_id = request.json['task_id']
+  name = request.json['name']
+  description = request.json['description']
+
+  print(f"Updating task {task_id} {name} {description}")
+
+  cursor = db.cursor()
+  cursor.reset()
+  db.commit()
+
+  try:
+    today = date.today()
+    today_sql = f"{today.year}-{today.month}-{today.day}"
+    sql = "UPDATE task SET name = %s, description = %s, updated_at = %s WHERE id = %s"
+    values = (name,description,today_sql, task_id)
+    cursor.execute(sql, values)
+    db.commit()
+
+    return jsonify({"status": "success"}), 200
+  except Exception as e:
+    # Unique modifier prevents duplicate username/email
+    print(e)
+    print(traceback.format_exc())
+    response = {
+      "status": "failed",
+      "message": "An exception occured"
+    }
+    return jsonify(response), 500
+
 @app.route('/api/task/delete', methods=['POST'])
 def delete_task():
   task_id = request.json['comment_ids']
@@ -283,7 +314,7 @@ def get_comments():
 def create_comment():
   task_id = request.json['task_id']
   comment = request.json['comment']
-
+  print(f"Creating comment {comment} for {task_id}")
   cursor = db.cursor()
   db.commit()
 
@@ -302,7 +333,7 @@ def create_comment():
     today = date.today()
     today_sql = f"{today.year}-{today.month}-{today.day}"
 
-    sql = "INSERT INTO task (id, task_id, comment, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)"
+    sql = "INSERT INTO comment (id, task_id, task_comment, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)"
     values = (comment_id, task_id, comment, today_sql, today_sql)
     cursor.execute(sql, values)
     db.commit()
